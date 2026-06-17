@@ -394,7 +394,7 @@
 // ================================================================
 // CONFIGURACIÓN
 // ================================================================
-const API_URL = 'https://script.google.com/macros/s/AKfycbxC_3JnFOB6Re3BsJC55dv1bL7gj6h_N-53E4RRjkD4CzviJUBkH5eO9jv9U3iRBsvd/exec'; // <--- CAMBIA ESTA URL
+const API_URL = 'https://script.google.com/macros/s/AKfycbxB2zabA4sMc8t3_Tm_He-6lHUxNtNGnNaMOeryeL9jolW5xLP-yw6mv5T14WFRkNnf/exec'; // <--- CAMBIA ESTA URL
 
 // ================================================================
 // VARIABLES GLOBALES
@@ -402,7 +402,6 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbxC_3JnFOB6Re3BsJC55dv1
 let allSites = [];
 let trendChartInstance = null;
 let tvInterval = null;
-let currentFilter = { cliente: 'all', responsable: 'all', estado: 'all', riesgo: 'all' };
 
 // ================================================================
 // FUNCIONES AUXILIARES
@@ -420,33 +419,106 @@ function getScoreColor(score) {
   return 'score-red';
 }
 
+function safeGet(obj, path, defaultValue) {
+  const keys = path.split('.');
+  let result = obj;
+  for (const key of keys) {
+    if (result === undefined || result === null) return defaultValue;
+    result = result[key];
+  }
+  return result !== undefined ? result : defaultValue;
+}
+
 // ================================================================
-// CARGA DE DATOS (USANDO EL NUEVO BACKEND)
+// CARGA DE DATOS CON LOGS
 // ================================================================
 async function cargarDatos() {
+  console.log('🔄 Iniciando carga de datos...');
+  const loadingElements = document.querySelectorAll('.loading');
+  loadingElements.forEach(el => el.style.display = 'block');
+
   try {
     const url = `${API_URL}?action=getDashboard&t=${Date.now()}`;
+    console.log(`📡 Llamando a API: ${url}`);
     const resp = await fetch(url);
+    console.log(`📡 Respuesta HTTP: ${resp.status}`);
+    
     const json = await resp.json();
-    if (!json.success) throw new Error(json.error);
+    console.log('📦 Datos recibidos:', json);
+
+    if (!json.success) {
+      throw new Error(json.error || 'Error desconocido en la API');
+    }
 
     const data = json.data;
-    // El backend ahora devuelve 'sites' con todos los campos enriquecidos
-    allSites = data.sites || [];
+    console.log('📊 Datos del dashboard:', data);
 
+    // --- VERIFICAR QUE LOS DATOS EXISTAN ---
+    if (!data) {
+      throw new Error('La API no devolvió datos (data es null/undefined)');
+    }
+
+    // Intentar obtener 'sites' de varias formas (por si el backend cambia)
+    let sites = [];
+    if (data.sites && Array.isArray(data.sites)) {
+      sites = data.sites;
+      console.log(`✅ Encontrados ${sites.length} sitios en data.sites`);
+    } else if (data.sitesProgress && Array.isArray(data.sitesProgress)) {
+      // Fallback: si el backend antiguo devuelve sitesProgress
+      sites = data.sitesProgress.map(s => ({
+        ...s,
+        avance: s.progress || 0,
+        diasAbiertos: s.daysOpen || 0,
+        diasInactivo: s.daysInactive || 0,
+        bloqueadas: s.blocked || 0,
+        responsable: s.responsable || 'N/A',
+        riesgo: s.riesgo || 'Normal',
+        score: s.score || 0
+      }));
+      console.log(`⚠️ Usando fallback sitesProgress (${sites.length} sitios)`);
+    } else {
+      console.warn('⚠️ No se encontró "sites" ni "sitesProgress" en la respuesta. Creando array vacío.');
+      sites = [];
+    }
+
+    // Si no hay sitios, mostrar mensaje
+    if (sites.length === 0) {
+      console.warn('⚠️ No hay sitios para mostrar.');
+      document.getElementById('rankingContainer').innerHTML = '<p style="color:#6b7a8f;">No hay sitios registrados.</p>';
+      document.getElementById('mainTableWrap').innerHTML = '<p style="color:#6b7a8f;">No hay sitios para mostrar.</p>';
+      document.getElementById('bottleneckContainer').innerHTML = '<p style="color:#6b7a8f;">No hay datos de disciplinas.</p>';
+      loadingElements.forEach(el => el.style.display = 'none');
+      return;
+    }
+
+    allSites = sites;
+    console.log(`✅ ${allSites.length} sitios cargados correctamente.`);
+
+    // Renderizar todo
     renderizarTodo(allSites);
     actualizarUltimaActualizacion();
+    loadingElements.forEach(el => el.style.display = 'none');
 
   } catch (error) {
-    console.error('Error cargando datos:', error);
-    document.getElementById('rankingContainer').innerHTML = `<p style="color:red;">❌ Error: ${error.message}</p>`;
+    console.error('❌ ERROR EN LA CARGA:', error);
+    const container = document.getElementById('rankingContainer');
+    container.innerHTML = `
+      <div style="background:#fce8e6; padding:16px; border-radius:8px; border-left:4px solid #ea4335;">
+        <p style="color:#c62828; font-weight:600;">❌ Error al cargar los datos</p>
+        <p style="color:#c62828; font-size:14px;">${error.message}</p>
+        <p style="color:#6b7a8f; font-size:13px; margin-top:8px;">Revisa que la URL de la API sea correcta y que el backend esté desplegado.</p>
+        <button class="btn btn-primary" onclick="cargarDatos()" style="margin-top:10px;">🔄 Reintentar</button>
+      </div>
+    `;
+    loadingElements.forEach(el => el.style.display = 'none');
   }
 }
 
 // ================================================================
-// RENDERIZADO PRINCIPAL (sin cambios, solo ajusta nombres de campos)
+// RENDERIZADO PRINCIPAL
 // ================================================================
 function renderizarTodo(sites) {
+  console.log('🎨 Renderizando dashboard con', sites.length, 'sitios');
   renderKPIs(sites);
   renderAlertas(sites);
   renderRanking(sites);
@@ -454,14 +526,14 @@ function renderizarTodo(sites) {
   renderBottlenecks(sites);
   renderTabla(sites);
   renderExecutive(sites);
+  poblarFiltros(sites);
   if (document.getElementById('tvMode').classList.contains('active')) {
     cargarTV();
   }
-  poblarFiltros(sites);
 }
 
 // ================================================================
-// KPIs (usando los campos del nuevo backend)
+// KPIs
 // ================================================================
 function renderKPIs(sites) {
   const total = sites.length;
@@ -470,7 +542,6 @@ function renderKPIs(sites) {
   const sitiosConBloqueos = sites.filter(s => (s.bloqueadas || 0) > 0).length;
 
   const avancePromedio = sites.reduce((acc, s) => acc + (s.avance || 0), 0) / (total || 1);
-  // Velocidad simulada (puedes calcularla con historial si tienes)
   const vel = (Math.random() * 4 - 1).toFixed(1);
   const velClass = parseFloat(vel) >= 0 ? 'trend-up' : 'trend-down';
 
@@ -503,7 +574,7 @@ function renderKPIs(sites) {
 }
 
 // ================================================================
-// ALERTAS (usando datos del backend)
+// ALERTAS
 // ================================================================
 function renderAlertas(sites) {
   const alerts = [];
@@ -605,11 +676,10 @@ function renderTrend(sites) {
 }
 
 // ================================================================
-// CUELLOS DE BOTELLA (usando datos del backend)
+// CUELLOS DE BOTELLA
 // ================================================================
 function renderBottlenecks(sites) {
   const container = document.getElementById('bottleneckContainer');
-  // Usamos los datos de bottleneck que devuelve el backend si existen, o calculamos
   const discMap = {};
   sites.forEach(s => {
     if (s.actividades) {
@@ -760,7 +830,7 @@ function renderExecutive(sites) {
 }
 
 // ================================================================
-// FILTROS (sin cambios)
+// FILTROS
 // ================================================================
 function poblarFiltros(sites) {
   const clientes = new Set();
@@ -796,19 +866,18 @@ function poblarFiltros(sites) {
 }
 
 function aplicarFiltros() {
-  currentFilter.cliente = document.getElementById('filterCliente').value;
-  currentFilter.responsable = document.getElementById('filterResponsable').value;
-  currentFilter.estado = document.getElementById('filterEstado').value;
-  currentFilter.riesgo = document.getElementById('filterRiesgo').value;
+  const cliente = document.getElementById('filterCliente').value;
+  const responsable = document.getElementById('filterResponsable').value;
+  const estado = document.getElementById('filterEstado').value;
+  const riesgo = document.getElementById('filterRiesgo').value;
 
   let filtered = allSites;
-  if (currentFilter.cliente !== 'all') filtered = filtered.filter(s => s.cliente === currentFilter.cliente);
-  if (currentFilter.responsable !== 'all') filtered = filtered.filter(s => s.responsable === currentFilter.responsable);
-  if (currentFilter.riesgo !== 'all') filtered = filtered.filter(s => s.riesgo === currentFilter.riesgo);
-  if (currentFilter.estado !== 'all') {
-    filtered = filtered.filter(s => (s.actividades || []).some(a => a.estado === currentFilter.estado));
+  if (cliente !== 'all') filtered = filtered.filter(s => s.cliente === cliente);
+  if (responsable !== 'all') filtered = filtered.filter(s => s.responsable === responsable);
+  if (riesgo !== 'all') filtered = filtered.filter(s => s.riesgo === riesgo);
+  if (estado !== 'all') {
+    filtered = filtered.filter(s => (s.actividades || []).some(a => a.estado === estado));
   }
-
   renderizarTodo(filtered);
 }
 
@@ -821,7 +890,7 @@ function resetFiltros() {
 }
 
 // ================================================================
-// DETALLE DE SITE (MODAL) - CORREGIDO
+// DETALLE DE SITE (MODAL)
 // ================================================================
 async function verDetalle(siteName) {
   const modal = document.getElementById('siteModal');
@@ -845,14 +914,12 @@ async function verDetalle(siteName) {
     });
     const pendientes = actividades.filter(a => a.estado !== 'Completado');
 
-    // Próximas acciones (generadas automáticamente)
     const acciones = [];
     if (bloqueadas.length > 0) acciones.push('🔓 Desbloquear actividades: ' + bloqueadas.map(a => a.actividad).join(', '));
     if (atrasadas.length > 0) acciones.push('⏰ Recuperar retraso en: ' + atrasadas.map(a => a.actividad).join(', '));
     if (pendientes.length > 0 && pendientes.length === actividades.length) acciones.push('🚀 Iniciar actividades: ' + pendientes.slice(0,3).map(a => a.actividad).join(', '));
     if (acciones.length === 0) acciones.push('✅ Todas las actividades están en buen estado');
 
-    // Encontrar el sitio en allSites para obtener datos adicionales
     const sitioData = allSites.find(s => s.site === siteName);
 
     let html = `
@@ -943,7 +1010,6 @@ async function cargarTV() {
       return;
     }
 
-    // Ordenar por bloqueos y avance
     const sorted = sites.sort((a, b) => (b.bloqueadas || 0) - (a.bloqueadas || 0) || (a.avance || 0) - (b.avance || 0));
 
     let html = '';
