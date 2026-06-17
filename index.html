@@ -49,7 +49,6 @@
         .btn-outline { background: transparent; border: 2px solid #1a73e8; color: #1a73e8; }
         .btn-outline:hover { background: #1a73e8; color: white; }
 
-        /* ========== BADGE DE ACTUALIZACIÓN ========== */
         .badge-auto {
             background: #e8f0fe;
             color: #1967d2;
@@ -79,7 +78,7 @@
         .kpi-card .value { font-size: 32px; font-weight: 700; color: #1a2b4a; margin: 5px 0; }
         .kpi-card .sub { font-size: 12px; color: #6b7a8f; }
 
-        /* ========== GRÁFICOS ========== */
+        /* ========== GRÁFICOS (Barra + Donut general) ========== */
         .charts-row {
             display: grid;
             grid-template-columns: 2fr 1fr;
@@ -93,6 +92,52 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.04);
         }
         .chart-box h3 { margin-bottom: 15px; font-size: 16px; color: #1a2b4a; }
+
+        /* ========== NUEVO: SCROLL DE DONAS POR SITIO ========== */
+        .donuts-scroll {
+            background: white;
+            padding: 20px;
+            border-radius: 14px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            margin-bottom: 25px;
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+        .donuts-scroll h3 {
+            font-size: 16px;
+            color: #1a2b4a;
+            margin-bottom: 15px;
+        }
+        .donut-card-container {
+            display: inline-flex;
+            gap: 30px;
+            padding-bottom: 10px;
+        }
+        .donut-card {
+            display: inline-block;
+            text-align: center;
+            min-width: 140px;
+            background: #f8fafc;
+            padding: 15px 20px 10px;
+            border-radius: 14px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+        }
+        .donut-card .site-name {
+            font-weight: 600;
+            color: #1a2b4a;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+        .donut-card .mini-chart {
+            width: 100px;
+            height: 100px;
+            margin: 0 auto 8px;
+        }
+        .donut-card .progress-text {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1a73e8;
+        }
 
         /* ========== TABLA DE SITES Y DETALLE ========== */
         .site-detail-layout {
@@ -187,7 +232,7 @@
         }
         .progress-fill { height: 100%; background: #1a73e8; border-radius: 10px; }
 
-        /* ========== MODO TV ========== */
+        /* ========== MODO TV (MEJORADO) ========== */
         .tv-mode {
             display: none;
             position: fixed;
@@ -201,17 +246,42 @@
             overflow-y: auto;
         }
         .tv-mode.active { display: block; }
-        .tv-mode .tv-header {
+
+        .tv-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             color: white;
+            margin-bottom: 40px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .tv-header .tv-title {
             font-size: 28px;
             font-weight: 300;
-            text-align: center;
-            margin-bottom: 40px;
             letter-spacing: 4px;
         }
+        .tv-header .tv-clock {
+            font-size: 32px;
+            font-weight: 600;
+            color: #8ab4f8;
+            background: rgba(255,255,255,0.05);
+            padding: 10px 25px;
+            border-radius: 50px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .tv-header .tv-next-update {
+            font-size: 16px;
+            color: #9aa0a6;
+            background: rgba(255,255,255,0.05);
+            padding: 8px 20px;
+            border-radius: 30px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
         .tv-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
             gap: 30px;
         }
         .tv-site-card {
@@ -257,6 +327,7 @@
             color: #9aa0a6;
             font-size: 16px;
         }
+
         .tv-exit-btn {
             position: fixed;
             top: 20px;
@@ -276,11 +347,13 @@
         @media (max-width: 992px) {
             .site-detail-layout { grid-template-columns: 1fr; }
             .charts-row { grid-template-columns: 1fr; }
+            .tv-header { flex-direction: column; align-items: stretch; text-align: center; }
         }
         @media (max-width: 768px) {
             .header { flex-direction: column; align-items: stretch; gap: 15px; }
             .kpi-grid { grid-template-columns: repeat(2, 1fr); }
             .tv-grid { grid-template-columns: 1fr; }
+            .donut-card-container { gap: 15px; }
         }
 
         .loading { text-align: center; padding: 50px; color: #6b7a8f; }
@@ -296,14 +369,14 @@
 
 <!-- ========== DASHBOARD NORMAL ========== -->
 <div class="container" id="normalView">
-    <!-- HEADER MEJORADO CON HORA Y ACTUALIZACIÓN -->
+    <!-- HEADER -->
     <div class="header">
         <div>
             <h1>📡 Dashboard Telecom</h1>
             <div class="header-info">
                 <span>🕒 <span id="currentTime">--</span></span>
                 <span>🔄 Última actualización: <span id="lastUpdate">--</span></span>
-                <span class="badge-auto">⏰ Actualización automática cada 60 min</span>
+                <span class="badge-auto">⏰ Actualización cada 60 min</span>
             </div>
         </div>
         <div class="header-actions">
@@ -323,10 +396,18 @@
         <div class="kpi-card" style="border-left-color:#9c27b0;"><div class="label">Bloqueadas</div><div class="value" id="kpiBlocked">-</div></div>
     </div>
 
-    <!-- GRÁFICOS -->
+    <!-- GRÁFICOS (Barra + Donut general) -->
     <div class="charts-row">
         <div class="chart-box"><h3>📊 Avance por SITE</h3><canvas id="barChart"></canvas></div>
-        <div class="chart-box"><h3>🍩 Avance por Disciplina</h3><canvas id="donutChart"></canvas></div>
+        <div class="chart-box"><h3>🍩 Avance por Disciplina (General)</h3><canvas id="donutChart"></canvas></div>
+    </div>
+
+    <!-- NUEVO: SCROLL DE DONAS POR SITIO -->
+    <div class="donuts-scroll" id="donutsScroll">
+        <h3>🍩 Avance individual por SITE</h3>
+        <div id="donutCardsContainer" class="donut-card-container">
+            <div style="color:#6b7a8f; padding:20px;">Cargando...</div>
+        </div>
     </div>
 
     <!-- TABLA DE SITES + PANEL DE DETALLE -->
@@ -346,10 +427,18 @@
     </div>
 </div>
 
-<!-- ========== MODO TV ========== -->
+<!-- ========== MODO TV (MEJORADO CON RELOJ Y PRÓXIMA ACTUALIZACIÓN) ========== -->
 <div class="tv-mode" id="tvMode">
     <button class="tv-exit-btn" onclick="desactivarTV()">✕ Salir TV</button>
-    <div class="tv-header">📡 MONITOREO EN VIVO - TELECOM</div>
+    <div class="tv-header">
+        <div class="tv-title">📡 MONITOREO EN VIVO - TELECOM</div>
+        <div>
+            <span class="tv-clock" id="tvClock">--:--:--</span>
+        </div>
+        <div>
+            <span class="tv-next-update" id="tvNextUpdate">⏳ Próxima actualización: -- min</span>
+        </div>
+    </div>
     <div class="tv-grid" id="tvGrid">
         <div style="color:white; text-align:center; grid-column:1/-1;">Cargando datos...</div>
     </div>
@@ -367,7 +456,11 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbzydoNxJFiMeW7vcUnOEOGV
 let barChartInstance = null;
 let donutChartInstance = null;
 let tvInterval = null;
-let currentSiteData = null;
+let updateInterval = 3600000; // 60 minutos en ms
+let nextUpdateTime = Date.now() + updateInterval;
+
+// Almacenar las mini donas (instancias de Chart.js) para poder destruirlas al recargar
+let miniDonutInstances = [];
 
 // ============================================================
 // FUNCIONES DE RELOJ Y ACTUALIZACIÓN
@@ -379,6 +472,17 @@ function actualizarReloj() {
         hour: '2-digit', minute: '2-digit', hour12: true 
     };
     document.getElementById('currentTime').textContent = now.toLocaleString('es-ES', opciones);
+    // Reloj para TV
+    const tvClock = document.getElementById('tvClock');
+    if (tvClock) {
+        tvClock.textContent = now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+    }
+    // Calcular tiempo restante para próxima actualización
+    const remaining = Math.max(0, Math.floor((nextUpdateTime - now) / 60000));
+    const tvNext = document.getElementById('tvNextUpdate');
+    if (tvNext) {
+        tvNext.textContent = `⏳ Próxima actualización: ${remaining} min`;
+    }
 }
 
 function actualizarUltimaActualizacion() {
@@ -388,6 +492,8 @@ function actualizarUltimaActualizacion() {
         hour: '2-digit', minute: '2-digit', hour12: true 
     };
     document.getElementById('lastUpdate').textContent = now.toLocaleString('es-ES', opciones);
+    // Resetear contador de próxima actualización
+    nextUpdateTime = now.getTime() + updateInterval;
 }
 
 // ============================================================
@@ -407,8 +513,9 @@ async function cargarDatos() {
         const data = json.data;
         renderKPIs(data);
         renderCharts(data);
+        renderDonutsPorSite(data); // <--- NUEVA FUNCIÓN
         renderTable(data);
-        actualizarUltimaActualizacion(); // <--- Se actualiza la hora de última carga
+        actualizarUltimaActualizacion();
     } catch (error) {
         console.error('Error:', error);
         tableWrapper.innerHTML = `<p style="color:red;">❌ Error al cargar: ${error.message}. Verifica que la URL sea correcta.</p>`;
@@ -427,7 +534,7 @@ function renderKPIs(data) {
 }
 
 // ============================================================
-// RENDER: GRÁFICOS
+// RENDER: GRÁFICOS (Barra y donut general)
 // ============================================================
 function renderCharts(data) {
     const sites = data.sitesProgress || [];
@@ -474,6 +581,69 @@ function renderCharts(data) {
             responsive: true,
             plugins: { legend: { position: 'bottom' } }
         }
+    });
+}
+
+// ============================================================
+// NUEVO: RENDER DONAS POR SITIO (Scroll horizontal)
+// ============================================================
+function renderDonutsPorSite(data) {
+    const container = document.getElementById('donutCardsContainer');
+    const sites = data.sitesProgress || [];
+
+    // Destruir gráficos anteriores para evitar fugas de memoria
+    miniDonutInstances.forEach(chart => chart.destroy());
+    miniDonutInstances = [];
+
+    if (sites.length === 0) {
+        container.innerHTML = '<div style="color:#6b7a8f; padding:20px;">No hay sitios para mostrar.</div>';
+        return;
+    }
+
+    let html = '';
+    sites.forEach((site, index) => {
+        const pct = Math.round(site.progress);
+        const color = pct === 100 ? '#0f9d58' : pct < 30 ? '#ea4335' : pct < 70 ? '#f4b400' : '#1a73e8';
+        // Generamos un id único para cada canvas
+        const canvasId = `miniDonut-${index}`;
+        html += `
+            <div class="donut-card">
+                <div class="site-name">${site.site}</div>
+                <div class="mini-chart">
+                    <canvas id="${canvasId}"></canvas>
+                </div>
+                <div class="progress-text">${pct}%</div>
+            </div>
+        `;
+    });
+    container.innerHTML = html;
+
+    // Ahora inicializamos cada minidonut con Chart.js
+    sites.forEach((site, index) => {
+        const canvasId = `miniDonut-${index}`;
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+        const pct = Math.round(site.progress);
+        const color = pct === 100 ? '#0f9d58' : pct < 30 ? '#ea4335' : pct < 70 ? '#f4b400' : '#1a73e8';
+
+        const ctx = canvas.getContext('2d');
+        const chart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                datasets: [{
+                    data: [pct, 100 - pct],
+                    backgroundColor: [color, '#e9edf2'],
+                    borderWidth: 0,
+                }]
+            },
+            options: {
+                cutout: '70%',
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: { legend: { display: false }, tooltip: { enabled: false } }
+            }
+        });
+        miniDonutInstances.push(chart);
     });
 }
 
@@ -535,7 +705,6 @@ async function verDetalle(siteName) {
         if (!json.success) throw new Error(json.error || 'Error al obtener detalle');
 
         const detalle = json.data;
-        currentSiteData = detalle;
 
         let html = `
             <div class="site-title">📍 ${detalle.site}</div>
@@ -660,13 +829,20 @@ async function renombrarSite() {
 }
 
 // ============================================================
-// MODO TV
+// MODO TV (MEJORADO)
 // ============================================================
 async function activarTV() {
     document.getElementById('tvMode').classList.add('active');
     await cargarTV();
     if (tvInterval) clearInterval(tvInterval);
-    tvInterval = setInterval(cargarTV, 30000);
+    // Actualizar cada 30 segundos (para el reloj y contador) y los datos cada 60 segundos
+    tvInterval = setInterval(() => {
+        actualizarReloj();
+        // Solo recargar datos cada 60 segundos para no saturar la API
+        if (Math.floor(Date.now() / 60000) % 1 === 0) { // cada minuto
+            cargarTV();
+        }
+    }, 10000); // cada 10 segundos actualizamos reloj y contador
 }
 
 function desactivarTV() {
@@ -721,8 +897,8 @@ async function cargarTV() {
 document.addEventListener('DOMContentLoaded', function() {
     cargarDatos();
     actualizarReloj();
-    setInterval(actualizarReloj, 1000); // Actualiza reloj cada segundo
-    setInterval(cargarDatos, 3600000); // Actualiza datos cada 60 minutos
+    setInterval(actualizarReloj, 1000); // Reloj cada segundo
+    setInterval(cargarDatos, 3600000); // Actualización completa cada 60 minutos
 });
 </script>
 </body>
