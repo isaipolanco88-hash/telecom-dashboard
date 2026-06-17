@@ -11,7 +11,7 @@
         body { background: #f4f6f9; padding: 20px; transition: all 0.3s; }
         .container { max-width: 1400px; margin: 0 auto; }
 
-        /* ========== HEADER ========== */
+        /* ========== HEADER CON LOGO ========== */
         .header {
             display: flex;
             justify-content: space-between;
@@ -23,9 +23,34 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.05);
             margin-bottom: 25px;
         }
-        .header h1 { font-size: 24px; color: #1a2b4a; }
-        .header-info { display: flex; gap: 20px; font-size: 13px; color: #6b7a8f; margin-top: 5px; flex-wrap: wrap; }
-        .header-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        .header-logo {
+            width: 200px;
+            height: 50px;
+            object-fit: contain;
+        }
+        .header-title h1 {
+            font-size: 24px;
+            color: #1a2b4a;
+            margin: 0;
+        }
+        .header-info {
+            display: flex;
+            gap: 20px;
+            font-size: 13px;
+            color: #6b7a8f;
+            margin-top: 5px;
+            flex-wrap: wrap;
+        }
+        .header-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
         .btn {
             padding: 10px 20px;
             border: none;
@@ -78,7 +103,7 @@
         .kpi-card .value { font-size: 32px; font-weight: 700; color: #1a2b4a; margin: 5px 0; }
         .kpi-card .sub { font-size: 12px; color: #6b7a8f; }
 
-        /* ========== GRÁFICOS (Barra + Donut general) ========== */
+        /* ========== GRÁFICOS ========== */
         .charts-row {
             display: grid;
             grid-template-columns: 2fr 1fr;
@@ -93,7 +118,7 @@
         }
         .chart-box h3 { margin-bottom: 15px; font-size: 16px; color: #1a2b4a; }
 
-        /* ========== NUEVO: SCROLL DE DONAS POR SITIO ========== */
+        /* ========== DONAS POR SITIO (SCROLL) ========== */
         .donuts-scroll {
             background: white;
             padding: 20px;
@@ -139,7 +164,7 @@
             color: #1a73e8;
         }
 
-        /* ========== TABLA DE SITES Y DETALLE ========== */
+        /* ========== TABLA Y DETALLE ========== */
         .site-detail-layout {
             display: grid;
             grid-template-columns: 1fr 1.5fr;
@@ -230,9 +255,9 @@
             overflow: hidden;
             display: inline-block;
         }
-        .progress-fill { height: 100%; background: #1a73e8; border-radius: 10px; }
+        .progress-fill { height: 100%; border-radius: 10px; }
 
-        /* ========== MODO TV (MEJORADO) ========== */
+        /* ========== MODO TV ========== */
         .tv-mode {
             display: none;
             position: fixed;
@@ -257,6 +282,16 @@
             gap: 15px;
         }
         .tv-header .tv-title {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        .tv-header .tv-title img {
+            width: 200px;
+            height: 50px;
+            object-fit: contain;
+        }
+        .tv-header .tv-title span {
             font-size: 28px;
             font-weight: 300;
             letter-spacing: 4px;
@@ -301,7 +336,6 @@
             width: 120px;
             height: 120px;
             border-radius: 50%;
-            background: conic-gradient(#1a73e8 var(--pct), #2a3a5a var(--pct));
             display: flex;
             align-items: center;
             justify-content: center;
@@ -351,6 +385,7 @@
         }
         @media (max-width: 768px) {
             .header { flex-direction: column; align-items: stretch; gap: 15px; }
+            .header-left { flex-wrap: wrap; }
             .kpi-grid { grid-template-columns: repeat(2, 1fr); }
             .tv-grid { grid-template-columns: 1fr; }
             .donut-card-container { gap: 15px; }
@@ -369,14 +404,17 @@
 
 <!-- ========== DASHBOARD NORMAL ========== -->
 <div class="container" id="normalView">
-    <!-- HEADER -->
+    <!-- HEADER CON LOGO -->
     <div class="header">
-        <div>
-            <h1>📡 Dashboard Telecom</h1>
-            <div class="header-info">
-                <span>🕒 <span id="currentTime">--</span></span>
-                <span>🔄 Última actualización: <span id="lastUpdate">--</span></span>
-                <span class="badge-auto">⏰ Actualización cada 60 min</span>
+        <div class="header-left">
+            <img class="header-logo" src="logo-telecom.png" alt="Logo" id="logoNormal">
+            <div class="header-title">
+                <h1>Dashboard Telecom</h1>
+                <div class="header-info">
+                    <span>🕒 <span id="currentTime">--</span></span>
+                    <span>🔄 Última actualización: <span id="lastUpdate">--</span></span>
+                    <span class="badge-auto">⏰ Actualización cada 60 min</span>
+                </div>
             </div>
         </div>
         <div class="header-actions">
@@ -396,13 +434,13 @@
         <div class="kpi-card" style="border-left-color:#9c27b0;"><div class="label">Bloqueadas</div><div class="value" id="kpiBlocked">-</div></div>
     </div>
 
-    <!-- GRÁFICOS (Barra + Donut general) -->
+    <!-- GRÁFICOS -->
     <div class="charts-row">
         <div class="chart-box"><h3>📊 Avance por SITE</h3><canvas id="barChart"></canvas></div>
-        <div class="chart-box"><h3>🍩 Avance por Disciplina (General)</h3><canvas id="donutChart"></canvas></div>
+        <div class="chart-box"><h3>🍩 Avance por Disciplina</h3><canvas id="donutChart"></canvas></div>
     </div>
 
-    <!-- NUEVO: SCROLL DE DONAS POR SITIO -->
+    <!-- DONAS POR SITIO (SCROLL) -->
     <div class="donuts-scroll" id="donutsScroll">
         <h3>🍩 Avance individual por SITE</h3>
         <div id="donutCardsContainer" class="donut-card-container">
@@ -410,7 +448,7 @@
         </div>
     </div>
 
-    <!-- TABLA DE SITES + PANEL DE DETALLE -->
+    <!-- TABLA + DETALLE -->
     <div class="site-detail-layout">
         <div class="table-container">
             <h3 style="margin-bottom:15px; font-size:16px;">📋 Resumen de Sites</h3>
@@ -427,11 +465,14 @@
     </div>
 </div>
 
-<!-- ========== MODO TV (MEJORADO CON RELOJ Y PRÓXIMA ACTUALIZACIÓN) ========== -->
+<!-- ========== MODO TV ========== -->
 <div class="tv-mode" id="tvMode">
     <button class="tv-exit-btn" onclick="desactivarTV()">✕ Salir TV</button>
     <div class="tv-header">
-        <div class="tv-title">📡 MONITOREO EN VIVO - TELECOM</div>
+        <div class="tv-title">
+            <img src="logo-telecom.png" alt="Logo" id="logoTV" style="width:200px; height:50px; object-fit:contain;">
+            <span>📡 MONITOREO EN VIVO - TELECOM</span>
+        </div>
         <div>
             <span class="tv-clock" id="tvClock">--:--:--</span>
         </div>
@@ -458,26 +499,32 @@ let donutChartInstance = null;
 let tvInterval = null;
 let updateInterval = 3600000; // 60 minutos en ms
 let nextUpdateTime = Date.now() + updateInterval;
-
-// Almacenar las mini donas (instancias de Chart.js) para poder destruirlas al recargar
 let miniDonutInstances = [];
 
 // ============================================================
-// FUNCIONES DE RELOJ Y ACTUALIZACIÓN
+// FUNCIÓN AUXILIAR PARA COLOR SEGÚN PORCENTAJE
+// ============================================================
+function getColorByProgress(pct) {
+    if (pct >= 100) return '#0f9d58'; // verde
+    if (pct >= 70) return '#1a73e8';   // azul
+    if (pct >= 30) return '#f4b400';   // amarillo
+    return '#ea4335';                  // rojo
+}
+
+// ============================================================
+// FUNCIONES DE RELOJ
 // ============================================================
 function actualizarReloj() {
     const now = new Date();
-    const opciones = { 
+    const opciones = {
         year: 'numeric', month: '2-digit', day: '2-digit',
-        hour: '2-digit', minute: '2-digit', hour12: true 
+        hour: '2-digit', minute: '2-digit', hour12: true
     };
     document.getElementById('currentTime').textContent = now.toLocaleString('es-ES', opciones);
-    // Reloj para TV
     const tvClock = document.getElementById('tvClock');
     if (tvClock) {
         tvClock.textContent = now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
     }
-    // Calcular tiempo restante para próxima actualización
     const remaining = Math.max(0, Math.floor((nextUpdateTime - now) / 60000));
     const tvNext = document.getElementById('tvNextUpdate');
     if (tvNext) {
@@ -487,17 +534,16 @@ function actualizarReloj() {
 
 function actualizarUltimaActualizacion() {
     const now = new Date();
-    const opciones = { 
+    const opciones = {
         year: 'numeric', month: '2-digit', day: '2-digit',
-        hour: '2-digit', minute: '2-digit', hour12: true 
+        hour: '2-digit', minute: '2-digit', hour12: true
     };
     document.getElementById('lastUpdate').textContent = now.toLocaleString('es-ES', opciones);
-    // Resetear contador de próxima actualización
     nextUpdateTime = now.getTime() + updateInterval;
 }
 
 // ============================================================
-// FUNCIÓN PRINCIPAL: CARGAR DATOS
+// CARGA PRINCIPAL DE DATOS
 // ============================================================
 async function cargarDatos() {
     const tableWrapper = document.getElementById('tableWrapper');
@@ -513,7 +559,7 @@ async function cargarDatos() {
         const data = json.data;
         renderKPIs(data);
         renderCharts(data);
-        renderDonutsPorSite(data); // <--- NUEVA FUNCIÓN
+        renderDonutsPorSite(data);
         renderTable(data);
         actualizarUltimaActualizacion();
     } catch (error) {
@@ -534,15 +580,20 @@ function renderKPIs(data) {
 }
 
 // ============================================================
-// RENDER: GRÁFICOS (Barra y donut general)
+// RENDER: GRÁFICOS (con colores dinámicos)
 // ============================================================
 function renderCharts(data) {
     const sites = data.sitesProgress || [];
     const labels = sites.map(s => s.site);
     const values = sites.map(s => Math.round(s.progress));
 
+    // --- GRÁFICO DE BARRAS CON COLORES DINÁMICOS ---
     const ctxBar = document.getElementById('barChart').getContext('2d');
     if (barChartInstance) barChartInstance.destroy();
+
+    // Asignar color a cada barra según su valor
+    const barColors = values.map(v => getColorByProgress(v));
+
     barChartInstance = new Chart(ctxBar, {
         type: 'bar',
         data: {
@@ -550,7 +601,7 @@ function renderCharts(data) {
             datasets: [{
                 label: '% Avance',
                 data: values.length ? values : [0],
-                backgroundColor: '#1a73e8',
+                backgroundColor: barColors.length ? barColors : ['#1a73e8'],
                 borderRadius: 6,
             }]
         },
@@ -561,19 +612,24 @@ function renderCharts(data) {
         }
     });
 
+    // --- DONA GENERAL DE DISCIPLINAS CON COLORES DINÁMICOS ---
     const disciplines = data.disciplines || {};
     const discLabels = Object.keys(disciplines);
-    const discValues = discLabels.map(d => Math.round(disciplines[d].progress));
+    const discValues = discLabels.map(d => Math.round(disciplines[d].progress || 0));
 
     const ctxDonut = document.getElementById('donutChart').getContext('2d');
     if (donutChartInstance) donutChartInstance.destroy();
+
+    // Asignar color a cada sector de la dona según su valor
+    const donutColors = discValues.map(v => getColorByProgress(v));
+
     donutChartInstance = new Chart(ctxDonut, {
         type: 'doughnut',
         data: {
             labels: discLabels.length ? discLabels : ['Sin datos'],
             datasets: [{
                 data: discValues.length ? discValues : [1],
-                backgroundColor: ['#1a73e8', '#0f9d58', '#f4b400', '#ea4335', '#9c27b0', '#00bcd4'],
+                backgroundColor: donutColors.length ? donutColors : ['#1a73e8'],
                 borderWidth: 0,
             }]
         },
@@ -585,13 +641,12 @@ function renderCharts(data) {
 }
 
 // ============================================================
-// NUEVO: RENDER DONAS POR SITIO (Scroll horizontal)
+// RENDER: DONAS POR SITIO (con colores dinámicos ya estaban)
 // ============================================================
 function renderDonutsPorSite(data) {
     const container = document.getElementById('donutCardsContainer');
     const sites = data.sitesProgress || [];
 
-    // Destruir gráficos anteriores para evitar fugas de memoria
     miniDonutInstances.forEach(chart => chart.destroy());
     miniDonutInstances = [];
 
@@ -603,8 +658,7 @@ function renderDonutsPorSite(data) {
     let html = '';
     sites.forEach((site, index) => {
         const pct = Math.round(site.progress);
-        const color = pct === 100 ? '#0f9d58' : pct < 30 ? '#ea4335' : pct < 70 ? '#f4b400' : '#1a73e8';
-        // Generamos un id único para cada canvas
+        const color = getColorByProgress(pct);
         const canvasId = `miniDonut-${index}`;
         html += `
             <div class="donut-card">
@@ -618,13 +672,12 @@ function renderDonutsPorSite(data) {
     });
     container.innerHTML = html;
 
-    // Ahora inicializamos cada minidonut con Chart.js
     sites.forEach((site, index) => {
         const canvasId = `miniDonut-${index}`;
         const canvas = document.getElementById(canvasId);
         if (!canvas) return;
         const pct = Math.round(site.progress);
-        const color = pct === 100 ? '#0f9d58' : pct < 30 ? '#ea4335' : pct < 70 ? '#f4b400' : '#1a73e8';
+        const color = getColorByProgress(pct);
 
         const ctx = canvas.getContext('2d');
         const chart = new Chart(ctx, {
@@ -648,7 +701,7 @@ function renderDonutsPorSite(data) {
 }
 
 // ============================================================
-// RENDER: TABLA DE SITES
+// RENDER: TABLA DE SITES (con barras de progreso también dinámicas)
 // ============================================================
 function renderTable(data) {
     const wrapper = document.getElementById('tableWrapper');
@@ -668,6 +721,7 @@ function renderTable(data) {
 
     sites.forEach(site => {
         const progress = Math.round(site.progress);
+        const color = getColorByProgress(progress);
         let estado = 'Pendiente';
         let badge = 'badge-warning';
         if (progress === 100) { estado = 'Completado'; badge = 'badge-success'; }
@@ -677,7 +731,9 @@ function renderTable(data) {
             <td><strong>${site.site}</strong></td>
             <td>
                 <div style="display:flex; align-items:center; gap:10px;">
-                    <div class="progress-bar"><div class="progress-fill" style="width:${progress}%;"></div></div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width:${progress}%; background-color:${color};"></div>
+                    </div>
                     <span>${progress}%</span>
                 </div>
             </td>
@@ -691,7 +747,7 @@ function renderTable(data) {
 }
 
 // ============================================================
-// FUNCIÓN: VER DETALLE (con barras de progreso y estados)
+// VER DETALLE DE SITE
 // ============================================================
 async function verDetalle(siteName) {
     const panel = document.getElementById('detailPanel');
@@ -723,6 +779,7 @@ async function verDetalle(siteName) {
         } else {
             detalle.activities.forEach(act => {
                 const pct = Math.round(act.avance || 0);
+                const color = getColorByProgress(pct);
                 let badgeClass = 'badge-warning';
                 if (act.estado === 'Completado') badgeClass = 'badge-success';
                 else if (act.estado === 'Pausado') badgeClass = 'badge-danger';
@@ -733,7 +790,7 @@ async function verDetalle(siteName) {
                     <span class="name">${act.actividad}</span>
                     <div class="progress">
                         <div class="progress-bar" style="width:100%;">
-                            <div class="progress-fill" style="width:${pct}%;"></div>
+                            <div class="progress-fill" style="width:${pct}%; background-color:${color};"></div>
                         </div>
                     </div>
                     <span style="min-width:45px; text-align:center;">${pct}%</span>
@@ -761,7 +818,7 @@ async function verDetalle(siteName) {
 }
 
 // ============================================================
-// FUNCIONES: NUEVO SITE Y RENOMBRAR
+// NUEVO SITE Y RENOMBRAR
 // ============================================================
 async function nuevoSite() {
     const name = prompt('✏️ Ingresa el nombre del nuevo SITE (ej. SITE-005):');
@@ -829,20 +886,18 @@ async function renombrarSite() {
 }
 
 // ============================================================
-// MODO TV (MEJORADO)
+// MODO TV
 // ============================================================
 async function activarTV() {
     document.getElementById('tvMode').classList.add('active');
     await cargarTV();
     if (tvInterval) clearInterval(tvInterval);
-    // Actualizar cada 30 segundos (para el reloj y contador) y los datos cada 60 segundos
     tvInterval = setInterval(() => {
         actualizarReloj();
-        // Solo recargar datos cada 60 segundos para no saturar la API
-        if (Math.floor(Date.now() / 60000) % 1 === 0) { // cada minuto
+        if (Math.floor(Date.now() / 60000) % 1 === 0) {
             cargarTV();
         }
-    }, 10000); // cada 10 segundos actualizamos reloj y contador
+    }, 10000);
 }
 
 function desactivarTV() {
@@ -870,15 +925,12 @@ async function cargarTV() {
         let html = '';
         sites.forEach(site => {
             const pct = Math.round(site.progress);
-            let color = '#1a73e8';
-            if (pct === 100) color = '#0f9d58';
-            else if (pct < 30) color = '#ea4335';
-            else if (pct < 70) color = '#f4b400';
+            const color = getColorByProgress(pct);
 
             html += `
             <div class="tv-site-card">
                 <div class="tv-site-name">${site.site}</div>
-                <div class="tv-progress-circle" style="--pct:${pct}%; background: conic-gradient(${color} 0% ${pct}%, #2a3a5a ${pct}% 100%);">
+                <div class="tv-progress-circle" style="background: conic-gradient(${color} 0% ${pct}%, #2a3a5a ${pct}% 100%);">
                     <div class="tv-progress-text">${pct}%</div>
                 </div>
                 <div class="tv-status">${pct === 100 ? '✅ COMPLETADO' : pct > 0 ? '🔄 EN EJECUCIÓN' : '⏳ PENDIENTE'}</div>
@@ -897,8 +949,8 @@ async function cargarTV() {
 document.addEventListener('DOMContentLoaded', function() {
     cargarDatos();
     actualizarReloj();
-    setInterval(actualizarReloj, 1000); // Reloj cada segundo
-    setInterval(cargarDatos, 3600000); // Actualización completa cada 60 minutos
+    setInterval(actualizarReloj, 1000);
+    setInterval(cargarDatos, 3600000);
 });
 </script>
 </body>
