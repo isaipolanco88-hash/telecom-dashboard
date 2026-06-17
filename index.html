@@ -29,7 +29,6 @@
     .header-title .sub { font-size: 13px; color: #6b7a8f; display: flex; gap: 16px; flex-wrap: wrap; }
     .header-right { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
 
-    /* Semáforo ejecutivo */
     .health-indicator {
       display: flex;
       align-items: center;
@@ -257,6 +256,9 @@
     .loading { text-align: center; padding: 30px; color: #6b7a8f; }
     .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #1a73e8; border-radius: 50%; width: 36px; height: 36px; animation: spin 1s linear infinite; margin: 0 auto 12px; }
     @keyframes spin { 100% { transform: rotate(360deg); } }
+
+    /* Contenedor fijo para el gráfico de tendencia (CORRECCIÓN) */
+    .trend-chart-wrapper { height: 200px; position: relative; }
   </style>
 </head>
 <body>
@@ -327,10 +329,12 @@
         <div id="rankingContainer"><div class="loading"><div class="spinner"></div>Cargando...</div></div>
       </div>
 
-      <!-- Tendencia Semanal -->
+      <!-- Tendencia Semanal (con contenedor de altura fija) -->
       <div class="card">
         <h3>📈 Tendencia de Avance (últimas 4 semanas)</h3>
-        <canvas id="trendChart" height="150"></canvas>
+        <div class="trend-chart-wrapper">
+          <canvas id="trendChart"></canvas>
+        </div>
       </div>
 
       <!-- Cuellos de botella -->
@@ -390,7 +394,7 @@
 // ================================================================
 // CONFIGURACIÓN
 // ================================================================
-const API_URL = 'https://script.google.com/macros/s/AKfycbyqvqwEyZojtER5xNGMx2Q7P9N63zF-awiBvje2J3fk12yPSYYQrVoXlX3pabSdshyw/exec'; // <--- CAMBIA ESTA URL
+const API_URL = 'https://script.google.com/macros/s/AKfycbxC_3JnFOB6Re3BsJC55dv1bL7gj6h_N-53E4RRjkD4CzviJUBkH5eO9jv9U3iRBsvd/exec'; // <--- CAMBIA ESTA URL
 
 // ================================================================
 // VARIABLES GLOBALES
@@ -425,7 +429,6 @@ function getHealthColor(score) {
 
 // Calcular Score de Riesgo (0-100)
 function calcularScore(site) {
-  // sitio debe tener: diasAbiertos, diasInactivo, bloqueadas, avance, diasRestantes
   let score = 0;
   // Días abiertos: >60 = 30 pts, >30 = 20 pts, >15 = 10 pts
   if (site.diasAbiertos > 60) score += 30;
@@ -508,7 +511,9 @@ async function cargarDatos() {
             diasAbiertos: Math.max(0, diasAbiertos),
             diasInactivo: Math.max(0, diasInactivo),
             diasRestantes,
-            actividades
+            actividades,
+            responsable: actividades.length > 0 ? actividades[0].responsable || 'N/A' : 'N/A',
+            cliente: 'Cliente X' // Placeholder, se puede extraer de datos si existe
           };
         }
         return s;
@@ -522,6 +527,8 @@ async function cargarDatos() {
     allSites.forEach(s => {
       s.score = calcularScore(s);
       s.riesgo = s.score > 60 ? 'Crítico' : s.score > 30 ? 'Riesgo' : 'Normal';
+      // Asegurar que avance sea numérico
+      s.avance = s.avanceReal || s.progress || 0;
     });
 
     renderizarTodo(allSites);
@@ -569,7 +576,7 @@ function renderKPIs(sites) {
   const sitiosConBloqueos = sites.filter(s => (s.bloqueadas || 0) > 0).length;
 
   // Velocidad semanal (simulada con diferencia de avance)
-  const avancePromedio = sites.reduce((acc, s) => acc + (s.avanceReal || s.progress || 0), 0) / (total || 1);
+  const avancePromedio = sites.reduce((acc, s) => acc + (s.avance || 0), 0) / (total || 1);
   const vel = (Math.random() * 4 - 1).toFixed(1); // placeholder, idealmente calcular con histórico
   const velClass = parseFloat(vel) >= 0 ? 'trend-up' : 'trend-down';
 
@@ -678,14 +685,14 @@ function renderRanking(sites) {
 }
 
 // ================================================================
-// TENDENCIA SEMANAL
+// TENDENCIA SEMANAL (CORREGIDA)
 // ================================================================
 function renderTrend(sites) {
   const ctx = document.getElementById('trendChart').getContext('2d');
   if (trendChartInstance) trendChartInstance.destroy();
 
   // Simular 4 semanas de avance (idealmente usar datos históricos)
-  const avancePromedio = sites.reduce((acc, s) => acc + (s.avanceReal || s.progress || 0), 0) / (sites.length || 1);
+  const avancePromedio = sites.reduce((acc, s) => acc + (s.avance || 0), 0) / (sites.length || 1);
   const base = Math.max(0, avancePromedio - 8);
   const data = [base, base + 2, base + 5, base + 7, base + 10];
   const labels = ['Semana 1', 'Semana 2', 'Semana 3', 'Semana 4', 'Actual'];
@@ -789,7 +796,7 @@ function renderTabla(sites) {
 
   const sorted = [...sites].sort((a, b) => (b.score || 0) - (a.score || 0));
   sorted.forEach(s => {
-    const pct = Math.round((s.avanceReal || s.progress || 0) * 10) / 10;
+    const pct = Math.round((s.avance || 0) * 10) / 10;
     const color = getColorByProgress(pct);
     const scoreColor = getScoreColor(s.score || 0);
     const statusDot = s.riesgo === 'Crítico' ? 'red' : s.riesgo === 'Riesgo' ? 'yellow' : 'green';
@@ -820,7 +827,7 @@ function renderTabla(sites) {
 function renderExecutive(sites) {
   const container = document.getElementById('executiveSummary');
   const total = sites.length;
-  const completados = sites.filter(s => (s.avanceReal || s.progress || 0) >= 100).length;
+  const completados = sites.filter(s => (s.avance || 0) >= 100).length;
   const enRiesgo = sites.filter(s => s.riesgo === 'Crítico' || s.riesgo === 'Riesgo').length;
   const avgScore = sites.reduce((acc, s) => acc + (s.score || 0), 0) / (total || 1);
   const health = avgScore <= 30 ? '🟢 Saludable' : avgScore <= 60 ? '🟡 Riesgo' : '🔴 Crítico';
@@ -1060,8 +1067,8 @@ async function cargarTV() {
       }
     }));
 
-    // Ordenar por score (simulado)
-    const sorted = sitesTV.sort((a, b) => (b.bloqueadas || 0) - (a.bloqueadas || 0));
+    // Ordenar por bloqueos y avance
+    const sorted = sitesTV.sort((a, b) => (b.bloqueadas || 0) - (a.bloqueadas || 0) || (a.avanceReal || 0) - (b.avanceReal || 0));
 
     let html = '';
     sorted.slice(0, 12).forEach(s => {
