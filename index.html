@@ -400,7 +400,6 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbxC_3JnFOB6Re3BsJC55dv1
 // VARIABLES GLOBALES
 // ================================================================
 let allSites = [];
-let allActivities = [];
 let trendChartInstance = null;
 let tvInterval = null;
 let currentFilter = { cliente: 'all', responsable: 'all', estado: 'all', riesgo: 'all' };
@@ -421,34 +420,8 @@ function getScoreColor(score) {
   return 'score-red';
 }
 
-function getHealthColor(score) {
-  if (score <= 30) return 'green';
-  if (score <= 60) return 'yellow';
-  return 'red';
-}
-
-// Calcular Score de Riesgo (0-100)
-function calcularScore(site) {
-  let score = 0;
-  // Días abiertos: >60 = 30 pts, >30 = 20 pts, >15 = 10 pts
-  if (site.diasAbiertos > 60) score += 30;
-  else if (site.diasAbiertos > 30) score += 20;
-  else if (site.diasAbiertos > 15) score += 10;
-  // Días sin actividad: >15 = 25 pts, >7 = 15 pts
-  if (site.diasInactivo > 15) score += 25;
-  else if (site.diasInactivo > 7) score += 15;
-  // Actividades bloqueadas: cada una 10 pts, max 30
-  score += Math.min(site.bloqueadas * 10, 30);
-  // Avance: bajo (<20%) +10 pts, medio (<50%) +5 pts
-  if (site.avance < 20) score += 10;
-  else if (site.avance < 50) score += 5;
-  // Días restantes (si fin plan < hoy): +10 pts
-  if (site.diasRestantes && site.diasRestantes < 0) score += 10;
-  return Math.min(score, 100);
-}
-
 // ================================================================
-// CARGA DE DATOS
+// CARGA DE DATOS (USANDO EL NUEVO BACKEND)
 // ================================================================
 async function cargarDatos() {
   try {
@@ -458,78 +431,8 @@ async function cargarDatos() {
     if (!json.success) throw new Error(json.error);
 
     const data = json.data;
-    // Guardar datos para filtros
-    allSites = data.sitesProgress || [];
-    allActivities = data.activities || [];
-
-    // Enriquecer sitios con datos de detalle (llamada paralela)
-    const sitesEnriched = await Promise.all(allSites.map(async (s) => {
-      try {
-        const detailUrl = `${API_URL}?action=getSiteDetail&site=${encodeURIComponent(s.site)}&t=${Date.now()}`;
-        const dResp = await fetch(detailUrl);
-        const dJson = await dResp.json();
-        if (dJson.success) {
-          const det = dJson.data;
-          const actividades = det.activities || [];
-          const bloqueadas = actividades.filter(a => a.bloqueo === 'Sí').length;
-          const completadas = actividades.filter(a => a.estado === 'Completado').length;
-          const total = actividades.length;
-          const avance = total > 0 ? actividades.reduce((acc, a) => acc + Number(a.avance || 0), 0) / total : 0;
-          // Calcular días abiertos (desde fecha de creación o primera actividad)
-          let fechaCreacion = null;
-          if (actividades.length > 0 && actividades[0].inicioPlan) {
-            fechaCreacion = new Date(actividades[0].inicioPlan);
-          } else {
-            fechaCreacion = new Date(); // fallback
-          }
-          const diasAbiertos = Math.floor((Date.now() - fechaCreacion.getTime()) / (1000*60*60*24));
-          // Días sin actividad (última actualización)
-          let ultimaAct = null;
-          if (actividades.length > 0) {
-            const fechas = actividades.map(a => a.updated ? new Date(a.updated) : null).filter(d => d);
-            if (fechas.length > 0) {
-              ultimaAct = new Date(Math.max(...fechas.map(d => d.getTime())));
-            }
-          }
-          const diasInactivo = ultimaAct ? Math.floor((Date.now() - ultimaAct.getTime()) / (1000*60*60*24)) : 999;
-          // Calcular días restantes (fin plan más cercano)
-          let finPlan = null;
-          if (actividades.length > 0) {
-            const fechasPlan = actividades.map(a => a.finPlan ? new Date(a.finPlan) : null).filter(d => d);
-            if (fechasPlan.length > 0) {
-              finPlan = new Date(Math.min(...fechasPlan.map(d => d.getTime())));
-            }
-          }
-          const diasRestantes = finPlan ? Math.floor((finPlan.getTime() - Date.now()) / (1000*60*60*24)) : 999;
-
-          return {
-            ...s,
-            totalActividades: total,
-            completadas,
-            bloqueadas,
-            avanceReal: avance,
-            diasAbiertos: Math.max(0, diasAbiertos),
-            diasInactivo: Math.max(0, diasInactivo),
-            diasRestantes,
-            actividades,
-            responsable: actividades.length > 0 ? actividades[0].responsable || 'N/A' : 'N/A',
-            cliente: 'Cliente X' // Placeholder, se puede extraer de datos si existe
-          };
-        }
-        return s;
-      } catch (e) {
-        return s;
-      }
-    }));
-
-    allSites = sitesEnriched;
-    // Calcular score para cada sitio
-    allSites.forEach(s => {
-      s.score = calcularScore(s);
-      s.riesgo = s.score > 60 ? 'Crítico' : s.score > 30 ? 'Riesgo' : 'Normal';
-      // Asegurar que avance sea numérico
-      s.avance = s.avanceReal || s.progress || 0;
-    });
+    // El backend ahora devuelve 'sites' con todos los campos enriquecidos
+    allSites = data.sites || [];
 
     renderizarTodo(allSites);
     actualizarUltimaActualizacion();
@@ -541,33 +444,24 @@ async function cargarDatos() {
 }
 
 // ================================================================
-// RENDERIZADO PRINCIPAL
+// RENDERIZADO PRINCIPAL (sin cambios, solo ajusta nombres de campos)
 // ================================================================
 function renderizarTodo(sites) {
-  // 1. KPIs
   renderKPIs(sites);
-  // 2. Alertas
   renderAlertas(sites);
-  // 3. Ranking
   renderRanking(sites);
-  // 4. Tendencia
   renderTrend(sites);
-  // 5. Cuellos de botella
   renderBottlenecks(sites);
-  // 6. Tabla principal
   renderTabla(sites);
-  // 7. Vista ejecutiva
   renderExecutive(sites);
-  // 8. Modo TV (si está activo)
   if (document.getElementById('tvMode').classList.contains('active')) {
     cargarTV();
   }
-  // 9. Filtros
   poblarFiltros(sites);
 }
 
 // ================================================================
-// KPIs
+// KPIs (usando los campos del nuevo backend)
 // ================================================================
 function renderKPIs(sites) {
   const total = sites.length;
@@ -575,12 +469,11 @@ function renderKPIs(sites) {
   const totalBloqueos = sites.reduce((acc, s) => acc + (s.bloqueadas || 0), 0);
   const sitiosConBloqueos = sites.filter(s => (s.bloqueadas || 0) > 0).length;
 
-  // Velocidad semanal (simulada con diferencia de avance)
   const avancePromedio = sites.reduce((acc, s) => acc + (s.avance || 0), 0) / (total || 1);
-  const vel = (Math.random() * 4 - 1).toFixed(1); // placeholder, idealmente calcular con histórico
+  // Velocidad simulada (puedes calcularla con historial si tienes)
+  const vel = (Math.random() * 4 - 1).toFixed(1);
   const velClass = parseFloat(vel) >= 0 ? 'trend-up' : 'trend-down';
 
-  // ETA: fecha estimada basada en velocidad (simplificada)
   let eta = 'No disponible';
   if (total > 0 && avancePromedio > 0) {
     const velocidad = parseFloat(vel) || 0.5;
@@ -592,7 +485,6 @@ function renderKPIs(sites) {
     }
   }
 
-  // Salud General (score promedio)
   const avgScore = sites.reduce((acc, s) => acc + (s.score || 0), 0) / (total || 1);
   const health = avgScore <= 30 ? '🟢 Saludable' : avgScore <= 60 ? '🟡 Riesgo' : '🔴 Crítico';
   const healthColor = avgScore <= 30 ? 'green' : avgScore <= 60 ? 'yellow' : 'red';
@@ -605,39 +497,32 @@ function renderKPIs(sites) {
   document.getElementById('kpiETA').textContent = eta;
   document.getElementById('kpiSalud').textContent = health;
 
-  // Semáforo ejecutivo
   const indicator = document.getElementById('healthIndicator');
   indicator.className = `health-indicator ${healthColor}`;
   document.getElementById('healthLabel').textContent = health;
 }
 
 // ================================================================
-// ALERTAS
+// ALERTAS (usando datos del backend)
 // ================================================================
 function renderAlertas(sites) {
   const alerts = [];
-  // 1. Sitios sin actividad > 15 días
   sites.filter(s => s.diasInactivo > 15).forEach(s => {
     alerts.push({ level: 'critical', text: `🔴 ${s.site} lleva ${s.diasInactivo} días sin actividad` });
   });
-  // 2. Sitios con bloqueos
   sites.filter(s => (s.bloqueadas || 0) > 0).forEach(s => {
     alerts.push({ level: 'critical', text: `🔴 ${s.site} tiene ${s.bloqueadas} actividades bloqueadas` });
   });
-  // 3. Sitios con retraso > 10 días
   sites.filter(s => s.diasRestantes < -10).forEach(s => {
     alerts.push({ level: 'risk', text: `🟡 ${s.site} está ${Math.abs(s.diasRestantes)} días por detrás del plan` });
   });
-  // 4. Sitios con score > 60
   sites.filter(s => s.score > 60).forEach(s => {
     alerts.push({ level: 'critical', text: `🔴 ${s.site} tiene un score de riesgo de ${s.score}` });
   });
-  // 5. Sitios con score entre 30 y 60
   sites.filter(s => s.score > 30 && s.score <= 60).forEach(s => {
     alerts.push({ level: 'risk', text: `🟡 ${s.site} tiene un score de riesgo de ${s.score}` });
   });
 
-  // Limitar a 10 alertas, priorizar críticas
   alerts.sort((a, b) => (a.level === 'critical' ? -1 : 1));
   const topAlerts = alerts.slice(0, 10);
 
@@ -648,7 +533,7 @@ function renderAlertas(sites) {
   }
   container.innerHTML = topAlerts.map(a => `
     <div class="alert-item ${a.level}">
-      <span class="badge ${a.level === 'critical' ? 'badge-critical' : a.level === 'risk' ? 'badge-risk' : 'badge-info'}">${a.level === 'critical' ? 'CRÍTICO' : 'RIESGO'}</span>
+      <span class="badge ${a.level === 'critical' ? 'badge-critical' : 'badge-risk'}">${a.level === 'critical' ? 'CRÍTICO' : 'RIESGO'}</span>
       ${a.text}
     </div>
   `).join('');
@@ -685,13 +570,12 @@ function renderRanking(sites) {
 }
 
 // ================================================================
-// TENDENCIA SEMANAL (CORREGIDA)
+// TENDENCIA SEMANAL
 // ================================================================
 function renderTrend(sites) {
   const ctx = document.getElementById('trendChart').getContext('2d');
   if (trendChartInstance) trendChartInstance.destroy();
 
-  // Simular 4 semanas de avance (idealmente usar datos históricos)
   const avancePromedio = sites.reduce((acc, s) => acc + (s.avance || 0), 0) / (sites.length || 1);
   const base = Math.max(0, avancePromedio - 8);
   const data = [base, base + 2, base + 5, base + 7, base + 10];
@@ -721,21 +605,23 @@ function renderTrend(sites) {
 }
 
 // ================================================================
-// CUELLOS DE BOTELLA
+// CUELLOS DE BOTELLA (usando datos del backend)
 // ================================================================
 function renderBottlenecks(sites) {
   const container = document.getElementById('bottleneckContainer');
-  // Agrupar por disciplina
+  // Usamos los datos de bottleneck que devuelve el backend si existen, o calculamos
   const discMap = {};
   sites.forEach(s => {
-    (s.actividades || []).forEach(a => {
-      const disc = a.disciplina || 'General';
-      if (!discMap[disc]) discMap[disc] = { total: 0, completadas: 0, pendientes: 0, bloqueadas: 0 };
-      discMap[disc].total++;
-      if (a.estado === 'Completado') discMap[disc].completadas++;
-      else if (a.bloqueo === 'Sí') discMap[disc].bloqueadas++;
-      else discMap[disc].pendientes++;
-    });
+    if (s.actividades) {
+      s.actividades.forEach(a => {
+        const disc = a.disciplina || 'General';
+        if (!discMap[disc]) discMap[disc] = { total: 0, completadas: 0, pendientes: 0, bloqueadas: 0 };
+        discMap[disc].total++;
+        if (a.estado === 'Completado') discMap[disc].completadas++;
+        else if (a.bloqueo === 'Sí') discMap[disc].bloqueadas++;
+        else discMap[disc].pendientes++;
+      });
+    }
   });
 
   const entries = Object.entries(discMap).map(([name, data]) => ({
@@ -770,7 +656,7 @@ function renderBottlenecks(sites) {
 }
 
 // ================================================================
-// TABLA PRINCIPAL MEJORADA
+// TABLA PRINCIPAL
 // ================================================================
 function renderTabla(sites) {
   const container = document.getElementById('mainTableWrap');
@@ -858,7 +744,6 @@ function renderExecutive(sites) {
   `;
   container.innerHTML = html;
 
-  // Ranking ejecutivo (top 5)
   const rankContainer = document.getElementById('executiveRanking');
   const top5 = [...sites].sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, 5);
   if (top5.length === 0) {
@@ -875,7 +760,7 @@ function renderExecutive(sites) {
 }
 
 // ================================================================
-// FILTROS
+// FILTROS (sin cambios)
 // ================================================================
 function poblarFiltros(sites) {
   const clientes = new Set();
@@ -887,9 +772,11 @@ function poblarFiltros(sites) {
     if (s.cliente) clientes.add(s.cliente);
     if (s.responsable) responsables.add(s.responsable);
     if (s.riesgo) riesgos.add(s.riesgo);
-    (s.actividades || []).forEach(a => {
-      if (a.estado) estados.add(a.estado);
-    });
+    if (s.actividades) {
+      s.actividades.forEach(a => {
+        if (a.estado) estados.add(a.estado);
+      });
+    }
   });
 
   const populateSelect = (id, values) => {
@@ -918,7 +805,6 @@ function aplicarFiltros() {
   if (currentFilter.cliente !== 'all') filtered = filtered.filter(s => s.cliente === currentFilter.cliente);
   if (currentFilter.responsable !== 'all') filtered = filtered.filter(s => s.responsable === currentFilter.responsable);
   if (currentFilter.riesgo !== 'all') filtered = filtered.filter(s => s.riesgo === currentFilter.riesgo);
-  // Filtro por estado (de actividades)
   if (currentFilter.estado !== 'all') {
     filtered = filtered.filter(s => (s.actividades || []).some(a => a.estado === currentFilter.estado));
   }
@@ -935,7 +821,7 @@ function resetFiltros() {
 }
 
 // ================================================================
-// DETALLE DE SITE (MODAL)
+// DETALLE DE SITE (MODAL) - CORREGIDO
 // ================================================================
 async function verDetalle(siteName) {
   const modal = document.getElementById('siteModal');
@@ -959,15 +845,25 @@ async function verDetalle(siteName) {
     });
     const pendientes = actividades.filter(a => a.estado !== 'Completado');
 
-    // Próximas acciones (simuladas)
+    // Próximas acciones (generadas automáticamente)
     const acciones = [];
     if (bloqueadas.length > 0) acciones.push('🔓 Desbloquear actividades: ' + bloqueadas.map(a => a.actividad).join(', '));
     if (atrasadas.length > 0) acciones.push('⏰ Recuperar retraso en: ' + atrasadas.map(a => a.actividad).join(', '));
     if (pendientes.length > 0 && pendientes.length === actividades.length) acciones.push('🚀 Iniciar actividades: ' + pendientes.slice(0,3).map(a => a.actividad).join(', '));
     if (acciones.length === 0) acciones.push('✅ Todas las actividades están en buen estado');
 
+    // Encontrar el sitio en allSites para obtener datos adicionales
+    const sitioData = allSites.find(s => s.site === siteName);
+
     let html = `
       <h2>📍 ${det.site}</h2>
+      <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px; background:#f8fafc; padding:10px; border-radius:8px;">
+        <span><strong>Responsable:</strong> ${sitioData?.responsable || 'N/A'}</span>
+        <span><strong>Cliente:</strong> ${sitioData?.cliente || 'N/A'}</span>
+        <span><strong>Días abiertos:</strong> ${sitioData?.diasAbiertos || 0}</span>
+        <span><strong>Días sin actividad:</strong> ${sitioData?.diasInactivo || 0}</span>
+        <span><strong>Riesgo:</strong> ${sitioData?.riesgo || 'Normal'}</span>
+      </div>
       <div class="summary-grid">
         <div class="summary-item"><div class="label">Total</div><div class="val">${actividades.length}</div></div>
         <div class="summary-item"><div class="label">Completadas</div><div class="val">${actividades.filter(a => a.estado === 'Completado').length}</div></div>
@@ -1008,7 +904,6 @@ function cerrarModal() {
   document.getElementById('siteModal').classList.remove('active');
 }
 
-// Cerrar modal al hacer clic fuera
 document.getElementById('siteModal').addEventListener('click', function(e) {
   if (e.target === this) cerrarModal();
 });
@@ -1023,7 +918,7 @@ async function activarTV() {
   tvInterval = setInterval(() => {
     cargarTV();
     actualizarRelojTV();
-  }, 15000); // rotar cada 15 segundos
+  }, 15000);
 }
 
 function desactivarTV() {
@@ -1042,37 +937,18 @@ async function cargarTV() {
     const json = await resp.json();
     if (!json.success) throw new Error(json.error);
 
-    const sites = json.data.sitesProgress || [];
+    const sites = json.data.sites || [];
     if (sites.length === 0) {
       grid.innerHTML = '<div style="color:white; text-align:center; grid-column:1/-1;">No hay sitios.</div>';
       return;
     }
 
-    // Enriquecer con datos de detalle (simplificado)
-    const sitesTV = await Promise.all(sites.map(async (s) => {
-      try {
-        const dUrl = `${API_URL}?action=getSiteDetail&site=${encodeURIComponent(s.site)}&t=${Date.now()}`;
-        const dResp = await fetch(dUrl);
-        const dJson = await dResp.json();
-        if (dJson.success) {
-          const det = dJson.data;
-          const acts = det.activities || [];
-          const bloqueadas = acts.filter(a => a.bloqueo === 'Sí').length;
-          const avance = acts.length > 0 ? acts.reduce((acc, a) => acc + Number(a.avance || 0), 0) / acts.length : 0;
-          return { ...s, bloqueadas, avanceReal: avance, totalActs: acts.length };
-        }
-        return s;
-      } catch (e) {
-        return s;
-      }
-    }));
-
     // Ordenar por bloqueos y avance
-    const sorted = sitesTV.sort((a, b) => (b.bloqueadas || 0) - (a.bloqueadas || 0) || (a.avanceReal || 0) - (b.avanceReal || 0));
+    const sorted = sites.sort((a, b) => (b.bloqueadas || 0) - (a.bloqueadas || 0) || (a.avance || 0) - (b.avance || 0));
 
     let html = '';
     sorted.slice(0, 12).forEach(s => {
-      const pct = Math.round((s.avanceReal || s.progress || 0) * 10) / 10;
+      const pct = Math.round((s.avance || 0) * 10) / 10;
       const color = getColorByProgress(pct);
       const riesgo = s.bloqueadas > 0 ? '🔴' : pct < 30 ? '🟡' : '🟢';
       html += `
@@ -1081,7 +957,7 @@ async function cargarTV() {
           <div class="tv-circle" style="background:conic-gradient(${color} 0% ${pct}%, #2a3a5a ${pct}% 100%);">${pct}%</div>
           <div class="tv-meta">
             <span>${riesgo} ${s.bloqueadas > 0 ? s.bloqueadas+' bloqueos' : 'Sin bloqueos'}</span>
-            <span>📅 ${s.totalActs || 0} act.</span>
+            <span>📅 ${s.total || 0} act.</span>
           </div>
         </div>
       `;
@@ -1134,6 +1010,3 @@ document.addEventListener('DOMContentLoaded', function() {
   setInterval(actualizarReloj, 1000);
   setInterval(cargarDatos, 1800000); // 30 min
 });
-</script>
-</body>
-</html>
