@@ -489,7 +489,7 @@
 // ============================================================
 // CONFIGURACIÓN - ¡CAMBIA ESTA URL POR LA TUYA!
 // ============================================================
-const API_URL = 'https://script.google.com/macros/s/AKfycbzydoNxJFiMeW7vcUnOEOGVvVpUr6oirCDBd7j26i4W8KIy43ib787qsZzTELNIoAf7/exec'; // <--- PEGA AQUÍ LA URL DE TU WEB APP
+const API_URL = 'https://script.google.com/macros/s/AKfycbxtxnRGov9BQR6xF3h4Qx-30o8rqEoh0YBLXkrKh9exTpVKGyYRxqtx4QZWcA6d8fiO/exec'; // <--- PEGA AQUÍ LA URL DE TU WEB APP
 
 // ============================================================
 // VARIABLES GLOBALES
@@ -502,13 +502,35 @@ let nextUpdateTime = Date.now() + updateInterval;
 let miniDonutInstances = [];
 
 // ============================================================
-// FUNCIÓN AUXILIAR PARA COLOR SEGÚN PORCENTAJE
+// FUNCIÓN AUXILIAR PARA COLOR SEGÚN PORCENTAJE (para barras y mini donas)
 // ============================================================
 function getColorByProgress(pct) {
     if (pct >= 100) return '#0f9d58'; // verde
     if (pct >= 70) return '#1a73e8';   // azul
     if (pct >= 30) return '#f4b400';   // amarillo
     return '#ea4335';                  // rojo
+}
+
+// ============================================================
+// PALETA DE COLORES FIJA PARA DISCIPLINAS
+// ============================================================
+const DISCIPLINE_COLORS = [
+    '#1a73e8', '#0f9d58', '#f4b400', '#ea4335', '#9c27b0',
+    '#00bcd4', '#ff5722', '#795548', '#607d8b', '#e91e63',
+    '#3f51b5', '#009688', '#ff9800', '#8bc34a', '#cddc39',
+    '#ffeb3b', '#ffc107', '#ff6f00', '#ad1457', '#283593'
+];
+
+function getDisciplineColor(disciplineName, index) {
+    if (index !== undefined) {
+        return DISCIPLINE_COLORS[index % DISCIPLINE_COLORS.length];
+    }
+    // Fallback: hash simple
+    let hash = 0;
+    for (let i = 0; i < disciplineName.length; i++) {
+        hash = disciplineName.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return DISCIPLINE_COLORS[Math.abs(hash) % DISCIPLINE_COLORS.length];
 }
 
 // ============================================================
@@ -580,18 +602,17 @@ function renderKPIs(data) {
 }
 
 // ============================================================
-// RENDER: GRÁFICOS (con colores dinámicos)
+// RENDER: GRÁFICOS (barras con colores por avance, dona con colores fijos)
 // ============================================================
 function renderCharts(data) {
     const sites = data.sitesProgress || [];
     const labels = sites.map(s => s.site);
     const values = sites.map(s => Math.round(s.progress));
 
-    // --- GRÁFICO DE BARRAS CON COLORES DINÁMICOS ---
+    // --- GRÁFICO DE BARRAS: color dinámico por avance ---
     const ctxBar = document.getElementById('barChart').getContext('2d');
     if (barChartInstance) barChartInstance.destroy();
 
-    // Asignar color a cada barra según su valor
     const barColors = values.map(v => getColorByProgress(v));
 
     barChartInstance = new Chart(ctxBar, {
@@ -612,7 +633,7 @@ function renderCharts(data) {
         }
     });
 
-    // --- DONA GENERAL DE DISCIPLINAS CON COLORES DINÁMICOS ---
+    // --- DONA DE DISCIPLINAS: color FIJO por disciplina ---
     const disciplines = data.disciplines || {};
     const discLabels = Object.keys(disciplines);
     const discValues = discLabels.map(d => Math.round(disciplines[d].progress || 0));
@@ -620,8 +641,8 @@ function renderCharts(data) {
     const ctxDonut = document.getElementById('donutChart').getContext('2d');
     if (donutChartInstance) donutChartInstance.destroy();
 
-    // Asignar color a cada sector de la dona según su valor
-    const donutColors = discValues.map(v => getColorByProgress(v));
+    // Asignar colores fijos según el nombre de la disciplina
+    const donutColors = discLabels.map((d, i) => getDisciplineColor(d, i));
 
     donutChartInstance = new Chart(ctxDonut, {
         type: 'doughnut',
@@ -641,7 +662,7 @@ function renderCharts(data) {
 }
 
 // ============================================================
-// RENDER: DONAS POR SITIO (con colores dinámicos ya estaban)
+// RENDER: DONAS POR SITIO (color por avance)
 // ============================================================
 function renderDonutsPorSite(data) {
     const container = document.getElementById('donutCardsContainer');
@@ -701,7 +722,7 @@ function renderDonutsPorSite(data) {
 }
 
 // ============================================================
-// RENDER: TABLA DE SITES (con barras de progreso también dinámicas)
+// RENDER: TABLA DE SITES (con barras de progreso con color por avance)
 // ============================================================
 function renderTable(data) {
     const wrapper = document.getElementById('tableWrapper');
